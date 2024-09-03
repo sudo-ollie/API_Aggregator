@@ -21,8 +21,8 @@ public class Function
     {
         // CloudWatch Logs
         var log = context.Logger;
-        log.Log($"context = {JsonConvert.SerializeObject(context, Formatting.Indented)}");
-        log.Log($"request = {JsonConvert.SerializeObject(request, Formatting.Indented)}");
+        //log.Log($"context = {JsonConvert.SerializeObject(context, Formatting.Indented)}");
+        //log.Log($"request = {JsonConvert.SerializeObject(request, Formatting.Indented)}");
 
         // Initial Error Trap - Incorrect Call Method
         if (request.RequestContext.Http.Method is not "GET")
@@ -37,26 +37,32 @@ public class Function
 
         try
         {
-            var responseArray = await HarvardCall("Sunflower", context);
-            var responseArray2 = await METCall("Sunflower", context);
+            var harvardResults = await HarvardCall("Sunflower", context);
+            var metResults = await METCall("Sunflower", context);
+            var combinedResults = harvardResults.Concat(metResults).ToList();
+            string jsonResponse = JsonConvert.SerializeObject(combinedResults);
 
-            log.Log($"BOTH CALLS COMPLETED | Harvard : {responseArray.Length} / MET : {responseArray2.Length}");
+            log.Log($"\nBOTH CALLS COMPLETED => Harvard : {harvardResults.Count} | MET : {metResults.Count} | Combined : {combinedResults.Count}");
 
+            return new APIGatewayHttpApiV2ProxyResponse
+            {
+                StatusCode = 200,
+                Body = jsonResponse,
+            };
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
+            log.Log($"An error occurred while processing the request : {ex.Message}");
+            return new APIGatewayHttpApiV2ProxyResponse
+            {
+                StatusCode = 500,
+                Body = JsonConvert.SerializeObject(new { error = "An error occurred while processing the request." })
+            };
         }
-
-        return new APIGatewayHttpApiV2ProxyResponse
-        {
-            StatusCode = 200,
-            Body = "Success"
-        };
     }
 
     //  Harvard API Call & Data Formatting
-    private static async Task<ItemObject[]> HarvardCall(string requestParam, ILambdaContext context)
+    private async Task<List<ItemObject>> HarvardCall(string requestParam, ILambdaContext context)
     {
         var log = context.Logger;
         var query = HttpUtility.ParseQueryString(string.Empty);
@@ -108,19 +114,19 @@ public class Function
             }
 
             log.Log($"Items Cleaned & Formatted : {resultList.Count}");
-            return resultList.ToArray();
+            return resultList;
         }
         catch (Exception ex)
         {
             log.LogLine($"API Call Error: Error Calling Harvard API");
             log.LogLine($"Error Message : {ex.Message}");
-            ItemObject[] resultArray = new ItemObject[0];
-            return resultArray;
+            List<ItemObject> resultList = new List<ItemObject>();
+            return resultList;
         }
     }
 
     //  MET API Call & Data Formatting
-    private static async Task<ItemObject[]> METCall(string requestParam, ILambdaContext context)
+    private async Task<List<ItemObject>> METCall(string requestParam, ILambdaContext context)
     {
         var log = context.Logger;
         var query = HttpUtility.ParseQueryString(string.Empty);
@@ -138,47 +144,53 @@ public class Function
             string responseBody = await response.Content.ReadAsStringAsync();
             JObject jsonResponse = JObject.Parse(responseBody);
             int[] metIDs = jsonResponse["objectIDs"].ToObject<int[]>();
-            log.Log("Object IDs successfully retrieved.");
+            log.Log("\nMET object IDs successfully retrieved.");
 
             List<ItemObject> resultList = new List<ItemObject>();
             foreach (int id in metIDs)
             {
                 await Task.Delay(750);
 
-                HttpResponseMessage itemResponse = await client.GetAsync($"{METObjectLookup}/{id}");
-                itemResponse.EnsureSuccessStatusCode();
-                string itemResponseBody = await itemResponse.Content.ReadAsStringAsync();
-                JObject itemJSONResponse = JObject.Parse(itemResponseBody);
+                try
+                {
+                    HttpResponseMessage itemResponse = await client.GetAsync($"{METObjectLookup}/{id}");
+                    itemResponse.EnsureSuccessStatusCode();
+                    string itemResponseBody = await itemResponse.Content.ReadAsStringAsync();
+                    JObject itemJSONResponse = JObject.Parse(itemResponseBody);
 
-                string imageURL = !string.IsNullOrEmpty(itemJSONResponse["primaryImage"].ToString())
-                    ? itemJSONResponse["primaryImage"].ToString()
-                    : null;
+                    string imageURL = !string.IsNullOrEmpty(itemJSONResponse["primaryImage"].ToString())
+                        ? itemJSONResponse["primaryImage"].ToString()
+                        : null;
 
-                string artistName = itemJSONResponse["constituents"] != null && itemJSONResponse["constituents"].HasValues
-                    ? itemJSONResponse["constituents"][0]["name"].ToString()
-                    : null;
+                    string artistName = itemJSONResponse["constituents"] != null && itemJSONResponse["constituents"].HasValues
+                        ? itemJSONResponse["constituents"][0]["name"].ToString()
+                        : null;
 
-                ItemObject responseItem = new ItemObject(
-                    itemJSONResponse["creditLine"]?.ToString(),
-                    itemJSONResponse["department"]?.ToString(),
-                    Convert.ToInt32(itemJSONResponse["objectID"]),
-                    itemJSONResponse["objectName"]?.ToString(),
-                    imageURL,
-                    artistName
-                );
-                resultList.Add(responseItem);
-                log.Log($"ObjectID : {id} added to resultList.");
+                    ItemObject responseItem = new ItemObject(
+                        itemJSONResponse["creditLine"]?.ToString(),
+                        itemJSONResponse["department"]?.ToString(),
+                        Convert.ToInt32(itemJSONResponse["objectID"]),
+                        itemJSONResponse["objectName"]?.ToString(),
+                        imageURL,
+                        artistName
+                    );
+                    resultList.Add(responseItem);
+                }
+                catch (Exception ex)
+                {
+                    log.Log($"\nError Calling Obeject [MET] : {ex.Message} - Item ID : {id}");
+                }
             }
 
-            log.Log($"MET items Cleaned & Formatted : {resultList.Count}");
-            return resultList.ToArray();
+            log.Log($"\nMET items Cleaned & Formatted : {resultList.Count}");
+            return resultList;
         }
         catch (Exception ex)
         {
-            log.LogLine($"API Call Error: Error Calling MET API");
-            log.LogLine($"Error Message : {ex.Message}");
-            ItemObject[] resultArray = new ItemObject[0];
-            return resultArray;
+            log.LogLine($"\nAPI Call Error: Error Calling MET API");
+            log.LogLine($"\nError Message : {ex.Message}");
+            List<ItemObject> resultList = new List<ItemObject>();
+            return resultList;
         }
     }
 
