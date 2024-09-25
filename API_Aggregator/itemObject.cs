@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace API_Aggregator
+﻿namespace API_Aggregator
 {
     public class ItemObject
     {
@@ -14,15 +8,39 @@ namespace API_Aggregator
         public string ArticleClassification { get; set; }
         public string ImageUrl { get; set; }
         public string ArtistName { get; set; }
+        public string Technique { get; set; }
+        public string Title { get; set; }
+        public string Date { get; set; }
+        public string ItemURL { get; set; }
+        public string Century { get; set; }
+        public string ArtistNationality { get; set; }
 
-        public ItemObject(string creditLine, string division, int articleId, string classification, string imageUrl, string artistName)
+        public ItemObject(
+            string creditLine,
+            string articleDivision,
+            int articleId,
+            string articleClassification,
+            string imageUrl,
+            string artistName,
+            string technique,
+            string title,
+            string date,
+            string itemURL,
+            string century,
+            string artistNationality)
         {
             CreditLine = creditLine;
-            ArticleDivision = division;
+            ArticleDivision = articleDivision;
             ArticleId = articleId;
-            ArticleClassification = classification;
+            ArticleClassification = articleClassification;
             ImageUrl = imageUrl;
             ArtistName = artistName;
+            Technique = technique;
+            Title = title;
+            Date = date;
+            ItemURL = itemURL;
+            Century = century;
+            ArtistNationality = artistNationality;
         }
     }
 }

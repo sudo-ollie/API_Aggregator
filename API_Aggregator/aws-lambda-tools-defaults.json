@@ -15,7 +15,7 @@
     "function-timeout"      : 30,
     "function-handler"      : "API_Aggregator::API_Aggregator.Function::FunctionHandler",
     "framework"             : "net8.0",
-    "function-name"         : "test_lambda",
+    "function-name"         : "CuratorAPI_V1",
     "package-type"          : "Zip",
     "function-role"         : "arn:aws:iam::058264105930:role/lambda-dev-role",
     "function-subnets"      : "",

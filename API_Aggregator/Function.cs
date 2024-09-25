@@ -21,8 +21,9 @@ public class Function
     {
         // CloudWatch Logs
         var log = context.Logger;
-        //log.Log($"context = {JsonConvert.SerializeObject(context, Formatting.Indented)}");
-        //log.Log($"request = {JsonConvert.SerializeObject(request, Formatting.Indented)}");
+        log.Log($"context = {JsonConvert.SerializeObject(context, Formatting.Indented)}");
+        log.Log($"request = {JsonConvert.SerializeObject(request, Formatting.Indented)}");
+
 
         // Initial Error Trap - Incorrect Call Method
         if (request.RequestContext.Http.Method is not "GET")
@@ -37,8 +38,13 @@ public class Function
 
         try
         {
-            var harvardResults = await HarvardCall("Sunflower", context);
-            var metResults = await METCall("Sunflower", context);
+            //  Pulling QSP off the request object
+            var queryStringParameters = request.QueryStringParameters;
+            string searchQuery = queryStringParameters["base"];
+            log.Log($"QSP : {searchQuery}");
+
+            var harvardResults = await HarvardCall(searchQuery, context);
+            var metResults = await METCall(searchQuery, context);
             var combinedResults = harvardResults.Concat(metResults).ToList();
             string jsonResponse = JsonConvert.SerializeObject(combinedResults);
 
@@ -80,6 +86,7 @@ public class Function
             HttpResponseMessage response = await client.GetAsync(uriBuilder.Uri);
             response.EnsureSuccessStatusCode();
             string responseBody = await response.Content.ReadAsStringAsync();
+            log.Log(responseBody);
             JObject jsonResponse = JObject.Parse(responseBody);
             int totalRecords = (int)jsonResponse["info"]["totalrecords"];
             log.LogLine($"Harvard API Called Successfully : {totalRecords}");
@@ -87,6 +94,7 @@ public class Function
             List<ItemObject> resultList = new List<ItemObject>();
             foreach (var item in jsonResponse["records"])
             {
+
                 string imageURL = null;
                 var imagesArray = item["images"] as JArray;
                 if (imagesArray != null && imagesArray.Count > 0 && imagesArray[0]["baseimageurl"] != null)
@@ -95,10 +103,12 @@ public class Function
                 }
 
                 string artistName = null;
+                string artistBirthplace = null;
                 var peopleArray = item["people"] as JArray;
-                if (peopleArray != null && peopleArray.Count > 0 && peopleArray[0]["name"] != null)
+                if (peopleArray != null && peopleArray.Count > 0 && peopleArray[0]["name"] != null && peopleArray[0]["birthplace"] != null)
                 {
                     artistName = peopleArray[0]["name"].ToString();
+                    artistBirthplace = peopleArray[0]["culture"].ToString();
                 }
 
                 ItemObject responseItem = new ItemObject(
@@ -107,7 +117,13 @@ public class Function
                     Convert.ToInt32(item["id"]),
                     item["classification"]?.ToString(),
                     imageURL,
-                    artistName
+                    artistName,
+                    item["medium"]?.ToString(),
+                    item["title"]?.ToString(),
+                    item["dated"]?.ToString(),
+                    item["url"]?.ToString(),
+                    item["century"]?.ToString(),
+                    artistBirthplace
                 );
 
                 resultList.Add(responseItem);
@@ -149,8 +165,6 @@ public class Function
             List<ItemObject> resultList = new List<ItemObject>();
             foreach (int id in metIDs)
             {
-                await Task.Delay(750);
-
                 try
                 {
                     HttpResponseMessage itemResponse = await client.GetAsync($"{METObjectLookup}/{id}");
@@ -166,13 +180,38 @@ public class Function
                         ? itemJSONResponse["constituents"][0]["name"].ToString()
                         : null;
 
+                    Func<JToken, string> centuryCalculator = objectDate =>
+                    {
+                        //  Null Check
+                        if (string.IsNullOrEmpty(objectDate?.ToString()))
+                            return "Unknown Century";
+
+                        //  Checking for a valid date & then substringing the first 2chars
+                        string yearString = objectDate.ToString();
+                        if (yearString.Length != 4 || !int.TryParse(yearString.Substring(0, 2), out int century))
+                            return "Invalid Year";
+
+                        //  Basic ternary to catch 21st
+                        century += 1;
+                        string suffix = century == 21 ? "st" : "th";
+                        return $"{century}{suffix} Century";
+                    };
+
+                    string calculatedCentury = centuryCalculator(itemJSONResponse["objectDate"]);
+
                     ItemObject responseItem = new ItemObject(
                         itemJSONResponse["creditLine"]?.ToString(),
                         itemJSONResponse["department"]?.ToString(),
                         Convert.ToInt32(itemJSONResponse["objectID"]),
                         itemJSONResponse["objectName"]?.ToString(),
                         imageURL,
-                        artistName
+                        artistName,
+                        itemJSONResponse["medium"]?.ToString(),
+                        itemJSONResponse["title"]?.ToString(),
+                        itemJSONResponse["objectDate"]?.ToString(),
+                        itemJSONResponse["objectURL"]?.ToString(),
+                        calculatedCentury,
+                        itemJSONResponse["artistNationality"]?.ToString()
                     );
                     resultList.Add(responseItem);
                 }
