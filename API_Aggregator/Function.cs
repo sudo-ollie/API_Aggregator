@@ -21,8 +21,8 @@ public class Function
     {
         // CloudWatch Logs
         var log = context.Logger;
-        log.Log($"context = {JsonConvert.SerializeObject(context, Formatting.Indented)}");
-        log.Log($"request = {JsonConvert.SerializeObject(request, Formatting.Indented)}");
+        //log.Log($"context = {JsonConvert.SerializeObject(context, Formatting.Indented)}");
+        //log.Log($"request = {JsonConvert.SerializeObject(request, Formatting.Indented)}");
 
 
         // Initial Error Trap - Incorrect Call Method
@@ -41,14 +41,16 @@ public class Function
             //  Pulling QSP off the request object
             var queryStringParameters = request.QueryStringParameters;
             string searchQuery = queryStringParameters["base"];
-            log.Log($"QSP : {searchQuery}");
+            log.Log($"\nQSP : {searchQuery}");
 
             var harvardResults = await HarvardCall(searchQuery, context);
-            var metResults = await METCall(searchQuery, context);
-            var combinedResults = harvardResults.Concat(metResults).ToList();
+            //  Temp Changes Whilst MET API is down
+            //var metResults = await METCall(searchQuery, context);
+            //var combinedResults = harvardResults.Concat(metResults).ToList();
+            var combinedResults = harvardResults.ToList();
             string jsonResponse = JsonConvert.SerializeObject(combinedResults);
 
-            log.Log($"\nBOTH CALLS COMPLETED => Harvard : {harvardResults.Count} | MET : {metResults.Count} | Combined : {combinedResults.Count}");
+            log.Log($"\nBOTH CALLS COMPLETED => Harvard : {harvardResults.Count} | MET : {0} | Combined : {combinedResults.Count}");
 
             return new APIGatewayHttpApiV2ProxyResponse
             {
@@ -71,73 +73,81 @@ public class Function
     private async Task<List<ItemObject>> HarvardCall(string requestParam, ILambdaContext context)
     {
         var log = context.Logger;
-        var query = HttpUtility.ParseQueryString(string.Empty);
-        query["classification"] = "Paintings|Prints|Photographs";
-        query["keyword"] = requestParam;
-        query["apikey"] = ApiKey;
-
-        var uriBuilder = new UriBuilder(HarvardBaseUrl)
-        {
-            Query = query.ToString()
-        };
+        var resultList = new List<ItemObject>();
+        string nextUrl = null;
 
         try
         {
-            HttpResponseMessage response = await client.GetAsync(uriBuilder.Uri);
-            response.EnsureSuccessStatusCode();
-            string responseBody = await response.Content.ReadAsStringAsync();
-            log.Log(responseBody);
-            JObject jsonResponse = JObject.Parse(responseBody);
-            int totalRecords = (int)jsonResponse["info"]["totalrecords"];
-            log.LogLine($"Harvard API Called Successfully : {totalRecords}");
-
-            List<ItemObject> resultList = new List<ItemObject>();
-            foreach (var item in jsonResponse["records"])
+            do
             {
+                var query = HttpUtility.ParseQueryString(string.Empty);
+                query["classification"] = "Paintings|Prints|Photographs";
+                query["keyword"] = requestParam;
+                query["apikey"] = ApiKey;
 
-                string imageURL = null;
-                var imagesArray = item["images"] as JArray;
-                if (imagesArray != null && imagesArray.Count > 0 && imagesArray[0]["baseimageurl"] != null)
+                var uriBuilder = new UriBuilder(nextUrl ?? HarvardBaseUrl);
+                if (nextUrl == null)
                 {
-                    imageURL = imagesArray[0]["baseimageurl"].ToString();
+                    uriBuilder.Query = query.ToString();
                 }
 
-                string artistName = null;
-                string artistBirthplace = null;
-                var peopleArray = item["people"] as JArray;
-                if (peopleArray != null && peopleArray.Count > 0 && peopleArray[0]["name"] != null && peopleArray[0]["birthplace"] != null)
+                HttpResponseMessage response = await client.GetAsync(uriBuilder.Uri);
+                response.EnsureSuccessStatusCode();
+                string responseBody = await response.Content.ReadAsStringAsync();
+                JObject jsonResponse = JObject.Parse(responseBody);
+
+                nextUrl = (string)jsonResponse["info"]["next"];
+                int totalRecords = (int)jsonResponse["info"]["totalrecords"];
+
+                log.LogLine($"\nHarvard API Called Successfully : {totalRecords}");
+
+                foreach (var item in jsonResponse["records"])
                 {
-                    artistName = peopleArray[0]["name"].ToString();
-                    artistBirthplace = peopleArray[0]["culture"].ToString();
+                    string imageURL = null;
+                    var imagesArray = item["images"] as JArray;
+                    if (imagesArray?.Count > 0 && imagesArray[0]["baseimageurl"] != null)
+                    {
+                        imageURL = imagesArray[0]["baseimageurl"].ToString();
+                    }
+
+                    string artistName = null;
+                    string artistBirthplace = null;
+                    var peopleArray = item["people"] as JArray;
+                    if (peopleArray?.Count > 0 && peopleArray[0]["name"] != null && peopleArray[0]["birthplace"] != null)
+                    {
+                        artistName = peopleArray[0]["name"].ToString();
+                        artistBirthplace = peopleArray[0]["culture"].ToString();
+                    }
+
+                    ItemObject responseItem = new ItemObject(
+                        item["creditline"]?.ToString(),
+                        item["division"]?.ToString(),
+                        Convert.ToInt32(item["id"]),
+                        item["classification"]?.ToString(),
+                        imageURL,
+                        artistName,
+                        item["medium"]?.ToString(),
+                        item["title"]?.ToString(),
+                        item["dated"]?.ToString(),
+                        item["url"]?.ToString(),
+                        item["century"]?.ToString(),
+                        artistBirthplace
+                    );
+
+                    resultList.Add(responseItem);
+                    log.Log("\nItem Formatted - Harvard API");
                 }
 
-                ItemObject responseItem = new ItemObject(
-                    item["creditline"]?.ToString(),
-                    item["division"]?.ToString(),
-                    Convert.ToInt32(item["id"]),
-                    item["classification"]?.ToString(),
-                    imageURL,
-                    artistName,
-                    item["medium"]?.ToString(),
-                    item["title"]?.ToString(),
-                    item["dated"]?.ToString(),
-                    item["url"]?.ToString(),
-                    item["century"]?.ToString(),
-                    artistBirthplace
-                );
+                log.Log($"\nItems Cleaned & Formatted : {resultList.Count} - Harvard API");
+            } while (nextUrl != null);
 
-                resultList.Add(responseItem);
-            }
-
-            log.Log($"Items Cleaned & Formatted : {resultList.Count}");
             return resultList;
         }
         catch (Exception ex)
         {
             log.LogLine($"API Call Error: Error Calling Harvard API");
             log.LogLine($"Error Message : {ex.Message}");
-            List<ItemObject> resultList = new List<ItemObject>();
-            return resultList;
+            return new List<ItemObject>();
         }
     }
 

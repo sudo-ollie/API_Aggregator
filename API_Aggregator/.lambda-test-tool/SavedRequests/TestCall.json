@@ -1,33 +1,22 @@
-{
+   {
     "Version": "2.0",
     "RouteKey": "GET /test_item",
-    "RawPath": "/Development/test_item",
-    "RawQueryString": "",
+    "RawPath": "/test_item",
+    "RawQueryString": "base=frog",
     "Cookies": null,
     "Headers": {
-        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "accept-encoding": "gzip, deflate, br, zstd",
-        "accept-language": "en-US,en;q=0.9",
-        "cache-control": "max-age=0",
+        "accept": "*/*",
         "content-length": "0",
-        "dnt": "1",
         "host": "8kbydqr7ig.execute-api.eu-west-2.amazonaws.com",
-        "priority": "u=0, i",
-        "sec-ch-ua": "\"Chromium\";v=\"128\", \"Not;A=Brand\";v=\"24\", \"Google Chrome\";v=\"128\"",
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": "\"Windows\"",
-        "sec-fetch-dest": "document",
-        "sec-fetch-mode": "navigate",
-        "sec-fetch-site": "none",
-        "sec-fetch-user": "?1",
-        "upgrade-insecure-requests": "1",
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-        "x-amzn-trace-id": "Root=1-66d615d0-60ba93dc5ab6334a2d078a85",
+        "user-agent": "insomnia/10.0.0",
+        "x-amzn-trace-id": "Root=1-66f56832-0452812077ae2b953299a8bc",
         "x-forwarded-for": "217.155.104.242",
         "x-forwarded-port": "443",
         "x-forwarded-proto": "https"
     },
-    "QueryStringParameters": null,
+    "QueryStringParameters": {
+        "base": "frog"
+    },
     "RequestContext": {
         "AccountId": "058264105930",
         "ApiId": "8kbydqr7ig",
@@ -36,17 +25,17 @@
         "DomainPrefix": "8kbydqr7ig",
         "Http": {
             "Method": "GET",
-            "Path": "/Development/test_item",
+            "Path": "/test_item",
             "Protocol": "HTTP/1.1",
             "SourceIp": "217.155.104.242",
-            "UserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+            "UserAgent": "insomnia/10.0.0"
         },
-        "RequestId": "dfhYrirCLPEEPHw=",
+        "RequestId": "et03_jClLPEEMBg=",
         "RouteId": null,
         "RouteKey": "GET /test_item",
-        "Stage": "Development",
-        "Time": "02/Sep/2024:19:45:20 +0000",
-        "TimeEpoch": 1725306320809,
+        "Stage": "$default",
+        "Time": "26/Sep/2024:13:57:06 +0000",
+        "TimeEpoch": 1727359026863,
         "Authentication": null
     },
     "Body": null,
