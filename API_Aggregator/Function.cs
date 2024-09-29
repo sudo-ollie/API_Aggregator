@@ -40,14 +40,38 @@ public class Function
         {
             //  Pulling QSP off the request object
             var queryStringParameters = request.QueryStringParameters;
-            string searchQuery = queryStringParameters["base"];
-            log.Log($"\nQSP : {searchQuery}");
+            string keywordQuery = queryStringParameters.TryGetValue("keyword", out var keyword) ? keyword : string.Empty;
 
-            var harvardResults = await HarvardCall(searchQuery, context);
+            string queryMedium = queryStringParameters.TryGetValue("medium", out var medium) ? medium : string.Empty;
+
+            int queryImage = 1; // Default to 1
+            if (queryStringParameters.TryGetValue("hasimage", out var hasImageString))
+            {
+                if (int.TryParse(hasImageString, out int parsedValue))
+                {
+                    queryImage = (parsedValue == 0) ? 0 : 1;
+                }
+            }
+
+            string queryLocation = queryStringParameters.TryGetValue("location", out var location) ? location : string.Empty;
+
+            string classificationQuery = queryStringParameters.TryGetValue("classification", out var classification) ? classification : string.Empty;
+
+            string titleQuery = queryStringParameters.TryGetValue("title", out var title) ? title : string.Empty;
+
+            context.Logger.LogLine($"\nParsed parameters: keyword='{keywordQuery}', medium='{queryMedium}', hasImage={queryImage}, " +
+                                   $"location='{queryLocation}', classification='{classificationQuery}', title='{titleQuery}'");
+
+            string searchQueryHarvard = HarvardBuildSearchQuery(keywordQuery, queryMedium, queryImage, queryLocation, classificationQuery, titleQuery);
+            string searchQueryMET = METBuildSearchQuery(keywordQuery, queryMedium, queryImage, queryLocation, titleQuery);
+
+            log.Log($"\nHarvard QSP : {HarvardBuildSearchQuery(keywordQuery, queryMedium, queryImage, queryLocation, classificationQuery, titleQuery)}");
+            log.Log($"\nMET QSP : {METBuildSearchQuery(keywordQuery, queryMedium, queryImage, queryLocation, titleQuery)}");
+
+            var harvardResults = await HarvardCall(searchQueryHarvard, context);
             //  Temp Changes Whilst MET API is down
-            //var metResults = await METCall(searchQuery, context);
-            //var combinedResults = harvardResults.Concat(metResults).ToList();
-            var combinedResults = harvardResults.ToList();
+            var metResults = await METCall(searchQueryMET, context);
+            var combinedResults = harvardResults.Concat(metResults).ToList();
             string jsonResponse = JsonConvert.SerializeObject(combinedResults);
 
             log.Log($"\nBOTH CALLS COMPLETED => Harvard : {harvardResults.Count} | MET : {0} | Combined : {combinedResults.Count}");
@@ -243,5 +267,77 @@ public class Function
         }
     }
 
+    //  MET Query Param Builder
+    private static string METBuildSearchQuery(string keywordQuery, object queryMedium, int queryImage, object queryLocation, string titleQuery)
+    {
+        var queryParams = new List<string>();
 
+        if (!string.IsNullOrEmpty(keywordQuery))
+            queryParams.Add($"q={HttpUtility.UrlEncode(keywordQuery)}");
+
+        if (queryMedium != null && queryMedium.ToString() != "")
+        {
+            string mediumValue = FormatQueryParameter(queryMedium);
+            queryParams.Add($"medium={mediumValue}");
+        }
+        else
+        {
+            queryParams.Add("medium=any");
+        }
+
+        queryParams.Add("hasImages=" + (queryImage == 0 ? "false" : "true"));
+
+        if (queryLocation != null && queryLocation.ToString() != "")
+        {
+            string locationValue = FormatQueryParameter(queryLocation);
+            queryParams.Add($"geoLocation={locationValue}");
+        }
+
+        if (!string.IsNullOrEmpty(titleQuery))
+            queryParams.Add($"title={HttpUtility.UrlEncode(titleQuery)}");
+
+        return queryParams.Count > 0 ? "?" + string.Join("&", queryParams) : string.Empty;
+    }
+    //  Harvard Query Param Builder
+    private static string HarvardBuildSearchQuery(string keywordQuery, object queryMedium, int queryImage, object queryLocation, object classificationQuery, string titleQuery)
+    {
+        var queryParams = new List<string>();
+
+        if (!string.IsNullOrEmpty(keywordQuery))
+            queryParams.Add($"q={HttpUtility.UrlEncode(keywordQuery)}");
+
+        if (queryMedium != null && queryMedium.ToString() != "")
+        {
+            string mediumValue = FormatQueryParameter(queryMedium);
+            queryParams.Add($"medium={mediumValue}");
+        }
+
+        queryParams.Add("hasImages=" + queryImage.ToString());
+
+        if (queryLocation != null && queryLocation.ToString() != "")
+        {
+            string locationValue = FormatQueryParameter(queryLocation);
+            queryParams.Add($"place={locationValue}");
+        }
+
+        if (classificationQuery != null && classificationQuery.ToString() != "")
+        {
+            string classificationValue = FormatQueryParameter(classificationQuery);
+            queryParams.Add($"classification={classificationValue}");
+        }
+
+        if (!string.IsNullOrEmpty(titleQuery))
+            queryParams.Add($"title={HttpUtility.UrlEncode(titleQuery)}");
+
+        return queryParams.Count > 0 ? "?" + string.Join("&", queryParams) : string.Empty;
+    }
+    //  Helper Function - Array to string X|X|X
+    private static string FormatQueryParameter(object param)
+    {
+        if (param is string[] array)
+        {
+            return string.Join("|", array.Select(HttpUtility.UrlEncode));
+        }
+        return HttpUtility.UrlEncode(param.ToString());
+    }
 }
