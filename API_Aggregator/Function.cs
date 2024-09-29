@@ -22,11 +22,11 @@ public class Function
         // CloudWatch Logs
         var log = context.Logger;
         //log.Log($"context = {JsonConvert.SerializeObject(context, Formatting.Indented)}");
-        //log.Log($"request = {JsonConvert.SerializeObject(request, Formatting.Indented)}");
+        log.Log($"request = {JsonConvert.SerializeObject(request, Formatting.Indented)}");
 
 
         // Initial Error Trap - Incorrect Call Method
-        if (request.RequestContext.Http.Method is not "GET")
+        if (request.RequestContext.Http.Method is not "POST")
         {
             log.Log("INCORRECT METHOD : Endpoint called with incorrect request method.");
             return new APIGatewayHttpApiV2ProxyResponse
@@ -38,14 +38,15 @@ public class Function
 
         try
         {
-            //  Pulling QSP off the request object
-            var queryStringParameters = request.QueryStringParameters;
-            string keywordQuery = queryStringParameters.TryGetValue("keyword", out var keyword) ? keyword : string.Empty;
+            //  Pull Options Off Request Body
+            var requestBody = JsonConvert.DeserializeObject<Dictionary<string, string>>(request.Body);
 
-            string queryMedium = queryStringParameters.TryGetValue("medium", out var medium) ? medium : string.Empty;
+            string keywordQuery = requestBody.TryGetValue("keyword", out var keyword) ? keyword : string.Empty;
+            string queryMedium = requestBody.TryGetValue("medium", out var medium) ? medium : string.Empty;
 
-            int queryImage = 1; // Default to 1
-            if (queryStringParameters.TryGetValue("hasimage", out var hasImageString))
+            //  Defaults To One Incase The User Doesn't Set On The FE
+            int queryImage = 1;
+            if (requestBody.TryGetValue("hasimage", out var hasImageString))
             {
                 if (int.TryParse(hasImageString, out int parsedValue))
                 {
@@ -53,28 +54,24 @@ public class Function
                 }
             }
 
-            string queryLocation = queryStringParameters.TryGetValue("location", out var location) ? location : string.Empty;
+            string queryLocation = requestBody.TryGetValue("location", out var location) ? location : string.Empty;
+            string classificationQuery = requestBody.TryGetValue("classification", out var classification) ? classification : string.Empty;
+            string titleQuery = requestBody.TryGetValue("title", out var title) ? title : string.Empty;
 
-            string classificationQuery = queryStringParameters.TryGetValue("classification", out var classification) ? classification : string.Empty;
-
-            string titleQuery = queryStringParameters.TryGetValue("title", out var title) ? title : string.Empty;
-
-            context.Logger.LogLine($"\nParsed parameters: keyword='{keywordQuery}', medium='{queryMedium}', hasImage={queryImage}, " +
-                                   $"location='{queryLocation}', classification='{classificationQuery}', title='{titleQuery}'");
+            context.Logger.LogLine($"\nParsed parameters: keyword='{keywordQuery}', medium='{queryMedium}', hasImage={queryImage}, " + $"location='{queryLocation}', classification='{classificationQuery}', title='{titleQuery}'");
 
             string searchQueryHarvard = HarvardBuildSearchQuery(keywordQuery, queryMedium, queryImage, queryLocation, classificationQuery, titleQuery);
             string searchQueryMET = METBuildSearchQuery(keywordQuery, queryMedium, queryImage, queryLocation, titleQuery);
 
-            log.Log($"\nHarvard QSP : {HarvardBuildSearchQuery(keywordQuery, queryMedium, queryImage, queryLocation, classificationQuery, titleQuery)}");
-            log.Log($"\nMET QSP : {METBuildSearchQuery(keywordQuery, queryMedium, queryImage, queryLocation, titleQuery)}");
+            log.Log($"\nHarvard Finished String Query : {searchQueryHarvard}");
+            log.Log($"\nMET Finished String Query : {searchQueryMET}");
 
             var harvardResults = await HarvardCall(searchQueryHarvard, context);
-            //  Temp Changes Whilst MET API is down
             var metResults = await METCall(searchQueryMET, context);
             var combinedResults = harvardResults.Concat(metResults).ToList();
             string jsonResponse = JsonConvert.SerializeObject(combinedResults);
 
-            log.Log($"\nBOTH CALLS COMPLETED => Harvard : {harvardResults.Count} | MET : {0} | Combined : {combinedResults.Count}");
+            log.Log($"\nBOTH CALLS COMPLETED => Harvard : {harvardResults.Count} | MET : {metResults.Count} | Combined : {combinedResults.Count}");
 
             return new APIGatewayHttpApiV2ProxyResponse
             {
