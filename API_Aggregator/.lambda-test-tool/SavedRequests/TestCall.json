@@ -1,22 +1,21 @@
-   {
+{
     "Version": "2.0",
-    "RouteKey": "GET /test_item",
-    "RawPath": "/test_item",
-    "RawQueryString": "base=frog",
+    "RouteKey": "POST /itemSearch",
+    "RawPath": "/itemSearch",
+    "RawQueryString": "",
     "Cookies": null,
     "Headers": {
         "accept": "*/*",
-        "content-length": "0",
+        "content-length": "155",
+        "content-type": "application/json",
         "host": "8kbydqr7ig.execute-api.eu-west-2.amazonaws.com",
         "user-agent": "insomnia/10.0.0",
-        "x-amzn-trace-id": "Root=1-66f56832-0452812077ae2b953299a8bc",
+        "x-amzn-trace-id": "Root=1-66f9a30b-471a9ee02424129d610c1dea",
         "x-forwarded-for": "217.155.104.242",
         "x-forwarded-port": "443",
         "x-forwarded-proto": "https"
     },
-    "QueryStringParameters": {
-        "base": "frog"
-    },
+    "QueryStringParameters": null,
     "RequestContext": {
         "AccountId": "058264105930",
         "ApiId": "8kbydqr7ig",
@@ -24,21 +23,21 @@
         "DomainName": "8kbydqr7ig.execute-api.eu-west-2.amazonaws.com",
         "DomainPrefix": "8kbydqr7ig",
         "Http": {
-            "Method": "GET",
-            "Path": "/test_item",
+            "Method": "POST",
+            "Path": "/itemSearch",
             "Protocol": "HTTP/1.1",
             "SourceIp": "217.155.104.242",
             "UserAgent": "insomnia/10.0.0"
         },
-        "RequestId": "et03_jClLPEEMBg=",
+        "RequestId": "e4ZpyhseLPEEJGw=",
         "RouteId": null,
-        "RouteKey": "GET /test_item",
+        "RouteKey": "POST /itemSearch",
         "Stage": "$default",
-        "Time": "26/Sep/2024:13:57:06 +0000",
-        "TimeEpoch": 1727359026863,
+        "Time": "29/Sep/2024:18:57:15 +0000",
+        "TimeEpoch": 1727636235130,
         "Authentication": null
     },
-    "Body": null,
+    "Body": "{\n  \"keyword\": \"landscape\",\n  \"medium\": \"oil\",\n  \"hasimage\": \"1\",\n  \"location\": \"France\",\n  \"classification\": [\"Paintings\",\"Picture\"],\n  \"title\": \"River\"\n}",
     "PathParameters": null,
     "IsBase64Encoded": false,
     "StageVariables": null
