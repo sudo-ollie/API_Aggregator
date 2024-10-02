@@ -26,7 +26,7 @@ public class Function
         log.Log($"requestBody = {JsonConvert.SerializeObject(request.Body, Formatting.Indented)}");
 
         // Initial Error Trap - Incorrect Call Method
-        if (request.RequestContext.Http.Method is not "POST")
+        if (request.RequestContext.Http.Method != "POST")
         {
             log.Log("INCORRECT METHOD : Endpoint called with incorrect request method.");
             return new APIGatewayHttpApiV2ProxyResponse
@@ -54,7 +54,7 @@ public class Function
             string searchQueryHarvard = requestObject.HarvardParamGen();
             string searchQueryMET = requestObject.METParamGen();
 
-            context.Logger.LogLine($"\nParsed parameters: keyword='{requestObject.Keyword}', medium='{requestObject.Medium}', hasImage={requestObject.HasImage}, " + $"location='{requestObject.Location}', classification='{requestObject.Classification}', title='{requestObject.Title}'");
+            log.Log($"\nParsed parameters: keyword='{requestObject.Keyword}', medium='{requestObject.Medium}', hasImage={requestObject.HasImage}, " + $"location='{requestObject.Location}', classification='{requestObject.Classification}', title='{requestObject.Title}'");
 
             log.Log($"\nHarvard Finished String Query : {searchQueryHarvard}");
             log.Log($"\nMET Finished String Query : {searchQueryMET}");
@@ -94,9 +94,7 @@ public class Function
         {
             do
             {
-                var query = HttpUtility.ParseQueryString(string.Empty);
-                query["classification"] = "Paintings|Prints|Photographs";
-                query["keyword"] = requestParam;
+                var query = HttpUtility.ParseQueryString(requestParam);
                 query["apikey"] = ApiKey;
 
                 var uriBuilder = new UriBuilder(nextUrl ?? HarvardBaseUrl);
@@ -104,7 +102,7 @@ public class Function
                 {
                     uriBuilder.Query = query.ToString();
                 }
-
+                log.LogLine($"\nHarvard API Request URL: {uriBuilder.Uri}");
                 HttpResponseMessage response = await client.GetAsync(uriBuilder.Uri);
                 response.EnsureSuccessStatusCode();
                 string responseBody = await response.Content.ReadAsStringAsync();
@@ -169,13 +167,13 @@ public class Function
     private async Task<List<ItemObject>> METCall(string requestParam, ILambdaContext context)
     {
         var log = context.Logger;
-        var query = HttpUtility.ParseQueryString(string.Empty);
-        query["q"] = requestParam;
+        var query = HttpUtility.ParseQueryString(requestParam);
 
         var uriBuilder = new UriBuilder(METBaseURL)
         {
             Query = query.ToString()
         };
+        log.LogLine($"\nMET API Search Request URL: {uriBuilder.Uri}");
 
         try
         {
@@ -238,6 +236,7 @@ public class Function
                         itemJSONResponse["artistNationality"]?.ToString()
                     );
                     resultList.Add(responseItem);
+                    log.Log("\nItem Formatted - MET API");
                 }
                 catch (Exception ex)
                 {
