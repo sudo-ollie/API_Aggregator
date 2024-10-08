@@ -92,7 +92,7 @@ public class Function
 
         try
         {
-            while (resultList.Count < 250)
+            while (resultList.Count < 150)
             {
                 do
                 {
@@ -113,7 +113,7 @@ public class Function
                     log.LogLine($"\nHarvard API Called Successfully : {totalRecords}");
                     foreach (var item in jsonResponse["records"])
                     {
-                        if (resultList.Count >= 250)
+                        if (resultList.Count >= 150)
                         {
                             break;
                         }
@@ -150,7 +150,7 @@ public class Function
                         log.Log("\nItem Formatted - Harvard API");
                     }
                     log.Log($"\nItems Cleaned & Formatted : {resultList.Count} - Harvard API");
-                } while (nextUrl != null && resultList.Count < 250);
+                } while (nextUrl != null && resultList.Count < 150);
 
                 if (nextUrl == null)
                 {
@@ -190,9 +190,9 @@ public class Function
             log.Log("\nMET object IDs successfully retrieved.");
 
             List<ItemObject> resultList = new List<ItemObject>();
-            while (resultList.Count < 250)
+            foreach (int id in metIDs)
             {
-                foreach (int id in metIDs)
+                while (resultList.Count < 150)
                 {
                     try
                     {
@@ -243,7 +243,7 @@ public class Function
                             itemJSONResponse["artistNationality"]?.ToString()
                         );
                         resultList.Add(responseItem);
-                        log.Log("\nItem Formatted - MET API");
+                        log.Log($"\nItem Formatted - MET API - {resultList.Count}");
                     }
                     catch (Exception ex)
                     {
