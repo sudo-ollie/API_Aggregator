@@ -51,7 +51,7 @@
         "TimeEpoch": 1727735170714,
         "Authentication": null
     },
-    "Body": "{\"keyword\":\"vase\",\"medium\":[],\"hasimage\":\"1\",\"location\":[],\"classification\":[],\"title\":\"\"}",
+    "Body": "{\n \"keyword\": \"woman\",\n \"medium\": \"painting\",\n \"hasimage\": \"1\",\n \"location\": \"\",\n \"classification\": [],\n \"title\": \"\"\n}",
     "PathParameters": null,
     "IsBase64Encoded": false,
     "StageVariables": null

@@ -92,66 +92,71 @@ public class Function
 
         try
         {
-            do
+            while (resultList.Count < 150)
             {
-                var query = HttpUtility.ParseQueryString(requestParam);
-                query["apikey"] = ApiKey;
+                do
+                {
+                    var query = HttpUtility.ParseQueryString(requestParam);
+                    query["apikey"] = ApiKey;
+                    var uriBuilder = new UriBuilder(nextUrl ?? HarvardBaseUrl);
+                    if (nextUrl == null)
+                    {
+                        uriBuilder.Query = query.ToString();
+                    }
+                    log.LogLine($"\nHarvard API Request URL: {uriBuilder.Uri}");
+                    HttpResponseMessage response = await client.GetAsync(uriBuilder.Uri);
+                    response.EnsureSuccessStatusCode();
+                    string responseBody = await response.Content.ReadAsStringAsync();
+                    JObject jsonResponse = JObject.Parse(responseBody);
+                    nextUrl = (string)jsonResponse["info"]["next"];
+                    int totalRecords = (int)jsonResponse["info"]["totalrecords"];
+                    log.LogLine($"\nHarvard API Called Successfully : {totalRecords}");
+                    foreach (var item in jsonResponse["records"])
+                    {
+                        if (resultList.Count >= 150)
+                        {
+                            break;
+                        }
 
-                var uriBuilder = new UriBuilder(nextUrl ?? HarvardBaseUrl);
+                        string imageURL = null;
+                        var imagesArray = item["images"] as JArray;
+                        if (imagesArray?.Count > 0 && imagesArray[0]["baseimageurl"] != null)
+                        {
+                            imageURL = imagesArray[0]["baseimageurl"].ToString();
+                        }
+                        string artistName = null;
+                        string artistBirthplace = null;
+                        var peopleArray = item["people"] as JArray;
+                        if (peopleArray?.Count > 0 && peopleArray[0]["name"] != null && peopleArray[0]["birthplace"] != null)
+                        {
+                            artistName = peopleArray[0]["name"].ToString();
+                            artistBirthplace = peopleArray[0]["culture"].ToString();
+                        }
+                        ItemObject responseItem = new ItemObject(
+                            item["creditline"]?.ToString(),
+                            item["division"]?.ToString(),
+                            Convert.ToInt32(item["id"]),
+                            item["classification"]?.ToString(),
+                            imageURL,
+                            artistName,
+                            item["medium"]?.ToString(),
+                            item["title"]?.ToString(),
+                            item["dated"]?.ToString(),
+                            item["url"]?.ToString(),
+                            item["century"]?.ToString(),
+                            artistBirthplace
+                        );
+                        resultList.Add(responseItem);
+                        log.Log("\nItem Formatted - Harvard API");
+                    }
+                    log.Log($"\nItems Cleaned & Formatted : {resultList.Count} - Harvard API");
+                } while (nextUrl != null && resultList.Count < 150);
+
                 if (nextUrl == null)
                 {
-                    uriBuilder.Query = query.ToString();
+                    break;
                 }
-                log.LogLine($"\nHarvard API Request URL: {uriBuilder.Uri}");
-                HttpResponseMessage response = await client.GetAsync(uriBuilder.Uri);
-                response.EnsureSuccessStatusCode();
-                string responseBody = await response.Content.ReadAsStringAsync();
-                JObject jsonResponse = JObject.Parse(responseBody);
-
-                nextUrl = (string)jsonResponse["info"]["next"];
-                int totalRecords = (int)jsonResponse["info"]["totalrecords"];
-
-                log.LogLine($"\nHarvard API Called Successfully : {totalRecords}");
-
-                foreach (var item in jsonResponse["records"])
-                {
-                    string imageURL = null;
-                    var imagesArray = item["images"] as JArray;
-                    if (imagesArray?.Count > 0 && imagesArray[0]["baseimageurl"] != null)
-                    {
-                        imageURL = imagesArray[0]["baseimageurl"].ToString();
-                    }
-
-                    string artistName = null;
-                    string artistBirthplace = null;
-                    var peopleArray = item["people"] as JArray;
-                    if (peopleArray?.Count > 0 && peopleArray[0]["name"] != null && peopleArray[0]["birthplace"] != null)
-                    {
-                        artistName = peopleArray[0]["name"].ToString();
-                        artistBirthplace = peopleArray[0]["culture"].ToString();
-                    }
-
-                    ItemObject responseItem = new ItemObject(
-                        item["creditline"]?.ToString(),
-                        item["division"]?.ToString(),
-                        Convert.ToInt32(item["id"]),
-                        item["classification"]?.ToString(),
-                        imageURL,
-                        artistName,
-                        item["medium"]?.ToString(),
-                        item["title"]?.ToString(),
-                        item["dated"]?.ToString(),
-                        item["url"]?.ToString(),
-                        item["century"]?.ToString(),
-                        artistBirthplace
-                    );
-
-                    resultList.Add(responseItem);
-                    log.Log("\nItem Formatted - Harvard API");
-                }
-
-                log.Log($"\nItems Cleaned & Formatted : {resultList.Count} - Harvard API");
-            } while (nextUrl != null);
+            }
 
             return resultList;
         }
@@ -187,63 +192,65 @@ public class Function
             List<ItemObject> resultList = new List<ItemObject>();
             foreach (int id in metIDs)
             {
-                try
+                while (resultList.Count < 150)
                 {
-                    HttpResponseMessage itemResponse = await client.GetAsync($"{METObjectLookup}/{id}");
-                    itemResponse.EnsureSuccessStatusCode();
-                    string itemResponseBody = await itemResponse.Content.ReadAsStringAsync();
-                    JObject itemJSONResponse = JObject.Parse(itemResponseBody);
-
-                    string imageURL = !string.IsNullOrEmpty(itemJSONResponse["primaryImage"].ToString())
-                        ? itemJSONResponse["primaryImage"].ToString()
-                        : null;
-
-                    string artistName = itemJSONResponse["constituents"] != null && itemJSONResponse["constituents"].HasValues
-                        ? itemJSONResponse["constituents"][0]["name"].ToString()
-                        : null;
-
-                    Func<JToken, string> centuryCalculator = objectDate =>
+                    try
                     {
-                        //  Null Check
-                        if (string.IsNullOrEmpty(objectDate?.ToString()))
-                            return "Unknown Century";
+                        HttpResponseMessage itemResponse = await client.GetAsync($"{METObjectLookup}/{id}");
+                        itemResponse.EnsureSuccessStatusCode();
+                        string itemResponseBody = await itemResponse.Content.ReadAsStringAsync();
+                        JObject itemJSONResponse = JObject.Parse(itemResponseBody);
 
-                        //  Checking for a valid date & then substringing the first 2chars
-                        string yearString = objectDate.ToString();
-                        if (yearString.Length != 4 || !int.TryParse(yearString.Substring(0, 2), out int century))
-                            return "Invalid Year";
+                        string imageURL = !string.IsNullOrEmpty(itemJSONResponse["primaryImage"].ToString())
+                            ? itemJSONResponse["primaryImage"].ToString()
+                            : null;
 
-                        //  Basic ternary to catch 21st
-                        century += 1;
-                        string suffix = century == 21 ? "st" : "th";
-                        return $"{century}{suffix} Century";
-                    };
+                        string artistName = itemJSONResponse["constituents"] != null && itemJSONResponse["constituents"].HasValues
+                            ? itemJSONResponse["constituents"][0]["name"].ToString()
+                            : null;
 
-                    string calculatedCentury = centuryCalculator(itemJSONResponse["objectDate"]);
+                        Func<JToken, string> centuryCalculator = objectDate =>
+                        {
+                            //  Null Check
+                            if (string.IsNullOrEmpty(objectDate?.ToString()))
+                                return "Unknown Century";
 
-                    ItemObject responseItem = new ItemObject(
-                        itemJSONResponse["creditLine"]?.ToString(),
-                        itemJSONResponse["department"]?.ToString(),
-                        Convert.ToInt32(itemJSONResponse["objectID"]),
-                        itemJSONResponse["objectName"]?.ToString(),
-                        imageURL,
-                        artistName,
-                        itemJSONResponse["medium"]?.ToString(),
-                        itemJSONResponse["title"]?.ToString(),
-                        itemJSONResponse["objectDate"]?.ToString(),
-                        itemJSONResponse["objectURL"]?.ToString(),
-                        calculatedCentury,
-                        itemJSONResponse["artistNationality"]?.ToString()
-                    );
-                    resultList.Add(responseItem);
-                    log.Log("\nItem Formatted - MET API");
-                }
-                catch (Exception ex)
-                {
-                    log.Log($"\nError Calling Obeject [MET] : {ex.Message} - Item ID : {id}");
+                            //  Checking for a valid date & then substringing the first 2chars
+                            string yearString = objectDate.ToString();
+                            if (yearString.Length != 4 || !int.TryParse(yearString.Substring(0, 2), out int century))
+                                return "Invalid Year";
+
+                            //  Basic ternary to catch 21st
+                            century += 1;
+                            string suffix = century == 21 ? "st" : "th";
+                            return $"{century}{suffix} Century";
+                        };
+
+                        string calculatedCentury = centuryCalculator(itemJSONResponse["objectDate"]);
+
+                        ItemObject responseItem = new ItemObject(
+                            itemJSONResponse["creditLine"]?.ToString(),
+                            itemJSONResponse["department"]?.ToString(),
+                            Convert.ToInt32(itemJSONResponse["objectID"]),
+                            itemJSONResponse["objectName"]?.ToString(),
+                            imageURL,
+                            artistName,
+                            itemJSONResponse["medium"]?.ToString(),
+                            itemJSONResponse["title"]?.ToString(),
+                            itemJSONResponse["objectDate"]?.ToString(),
+                            itemJSONResponse["objectURL"]?.ToString(),
+                            calculatedCentury,
+                            itemJSONResponse["artistNationality"]?.ToString()
+                        );
+                        resultList.Add(responseItem);
+                        log.Log($"\nItem Formatted - MET API - {resultList.Count}");
+                    }
+                    catch (Exception ex)
+                    {
+                        log.Log($"\nError Calling Obeject [MET] : {ex.Message} - Item ID : {id}");
+                    }
                 }
             }
-
             log.Log($"\nMET items Cleaned & Formatted : {resultList.Count}");
             return resultList;
         }

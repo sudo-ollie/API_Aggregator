@@ -12,7 +12,7 @@
     "function-architecture" : "x86_64",
     "function-runtime"      : "dotnet8",
     "function-memory-size"  : 1024,
-    "function-timeout"      : 120,
+    "function-timeout"      : 300,
     "function-handler"      : "API_Aggregator::API_Aggregator.Function::FunctionHandler",
     "framework"             : "net8.0",
     "function-name"         : "CuratorAPI_V1",
