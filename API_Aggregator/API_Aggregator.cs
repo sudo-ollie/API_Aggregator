@@ -1,7 +1,9 @@
 using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Core;
+using Amazon.Runtime.Internal;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.ComponentModel;
 using System.Web;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
@@ -9,7 +11,7 @@ using System.Web;
 
 namespace API_Aggregator;
 
-public class Function
+public class API_Aggregator_Main
 {
     private static readonly HttpClient client = new HttpClient();
     private const string ApiKey = "6b920e03-1991-458c-92d8-f75913dce8b8";
@@ -21,12 +23,11 @@ public class Function
     {
         // CloudWatch Logs
         var log = context.Logger;
-        //log.Log($"context = {JsonConvert.SerializeObject(context, Formatting.Indented)}");
         log.Log($"request = {JsonConvert.SerializeObject(request, Formatting.Indented)}");
         log.Log($"requestBody = {JsonConvert.SerializeObject(request.Body, Formatting.Indented)}");
 
         // Initial Error Trap - Incorrect Call Method
-        if (request.RequestContext.Http.Method != "POST")
+        if (ReqMethodChecker(request))
         {
             log.Log("INCORRECT METHOD : Endpoint called with incorrect request method.");
             return new APIGatewayHttpApiV2ProxyResponse
@@ -254,6 +255,13 @@ public class Function
             List<ItemObject> resultList = new List<ItemObject>();
             return resultList;
         }
+    }
+
+    //  Method Checking Function
+    public bool ReqMethodChecker(APIGatewayHttpApiV2ProxyRequest request)
+    {
+        string usedMethod = request.RequestContext.Http.Method;
+        return usedMethod != "POST";
     }
 
 }

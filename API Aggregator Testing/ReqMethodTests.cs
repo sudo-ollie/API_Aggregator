@@ -1,27 +1,57 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
+using Amazon.Lambda.APIGatewayEvents;
+using API_Aggregator;
 
 namespace API_Aggregator_Testing
 {
     [TestClass]
     public class ReqMethodTests
     {
-        [TestMethod]
-        public void RequestMethod_MethodIsPOST_FunctionDoesNotExecute()
+        private API_Aggregator_Main _function;
+
+        [TestInitialize]
+        public void Initialize()
         {
-            //  'Triple A Test Pattern'
-            //  Example below of how to set up a test, my code needs to be 'function-alised' so that I can actually test it
+            _function = new API_Aggregator_Main();
+        }
 
-            //  Arrange
-            //  Creating a version of whatever you're wanting to test could be a request body / cookie / whatever
-            var reservation = new Reservation();
+        [TestMethod]
+        public void ReqMethodChecker_WhenMethodIsPOST_ReturnsFalse()
+        {
+            // Arrange
+            var request = new APIGatewayHttpApiV2ProxyRequest
+            {
+                RequestContext = new APIGatewayHttpApiV2ProxyRequest.ProxyRequestContext
+                {
+                    Http = new APIGatewayHttpApiV2ProxyRequest.HttpDescription
+                    {
+                        Method = "POST"
+                    }
+                }
+            };
+            // Act
+            bool result = _function.ReqMethodChecker(request);
+            // Assert
+            Assert.IsFalse(result);
+        }
 
-            //  Act
-            //  Testing whatever you're wanting to test - Saving to a var for assertions
-            var result = reservation.MethodToTest();
-
-            //  Assert
-            //  MSTest built in Assert class & methods
+        [TestMethod]
+        public void ReqMethodChecker_WhenMethodIsNotPOST_ReturnsTrue()
+        {
+            // Arrange
+            var request = new APIGatewayHttpApiV2ProxyRequest
+            {
+                RequestContext = new APIGatewayHttpApiV2ProxyRequest.ProxyRequestContext
+                {
+                    Http = new APIGatewayHttpApiV2ProxyRequest.HttpDescription
+                    {
+                        Method = "GET"
+                    }
+                }
+            };
+            // Act
+            bool result = _function.ReqMethodChecker(request);
+            // Assert
             Assert.IsTrue(result);
         }
     }
