@@ -1,0 +1,18 @@
+
+{
+    "profile" : "Lambda-Dev-Role",
+    "region"  : "eu-west-2",
+    "configuration" : "Release",
+    "function-runtime" : "dotnet6",
+    "function-memory-size" : 256,
+    "function-timeout"     : 30,
+    "function-handler"     : "API_Aggregator::API_Aggregator.API_Aggregator_Main::FunctionHandler",
+    "framework"            : "net8.0",
+    "function-name"        : "CuratorAPI_V1",
+    "package-type"         : "Zip",
+    "function-architecture" : "x86_64",
+    "image-tag"             : "",
+    "function-description"  : "",
+    "tracing-mode"          : "PassThrough",
+    "environment-variables" : "\"ApiKey\"=\"6b920e03-1991-458c-92d8-f75913dce8b8\""
+}

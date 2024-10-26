@@ -13,7 +13,6 @@ namespace API_Aggregator;
 public class API_Aggregator_Main
 {
     private static readonly HttpClient client = new HttpClient();
-    private const string ApiKey = "6b920e03-1991-458c-92d8-f75913dce8b8";
     private const string HarvardBaseUrl = "https://api.harvardartmuseums.org/object";
     private const string METBaseURL = "https://collectionapi.metmuseum.org/public/collection/v1/search";
     private const string METObjectLookup = "https://collectionapi.metmuseum.org/public/collection/v1/objects/";
@@ -25,6 +24,11 @@ public class API_Aggregator_Main
         var log = context.Logger;
         log.Log($"request = {JsonConvert.SerializeObject(request, Formatting.Indented)}");
         log.Log($"requestBody = {JsonConvert.SerializeObject(request.Body, Formatting.Indented)}");
+        log.Log($"context = {JsonConvert.SerializeObject(context, Formatting.Indented)}");
+
+        //  Pulling API Key from Lambda Env Vars
+        var envVars = System.Environment.GetEnvironmentVariables();
+        string ApiKey = envVars["ApiKey"].ToString();
 
         //  Initial Error Trap - Incorrect Call Method
         if (ReqMethodChecker(request))
@@ -63,7 +67,7 @@ public class API_Aggregator_Main
             log.Log($"\nMET Finished String Query : {searchQueryMET}");
 
             //  MET & Harvard Calls
-            var harvardResults = await HarvardCall(searchQueryHarvard, context);
+            var harvardResults = await HarvardCall(searchQueryHarvard, context , ApiKey);
             var metResults = await METCall(searchQueryMET, context);
             //  Concatenation Of The Results
             var combinedResults = harvardResults.Concat(metResults).ToList();
@@ -95,7 +99,7 @@ public class API_Aggregator_Main
     }
 
     //  Harvard API Call & Data Formatting
-    public async Task<List<ItemObject>> HarvardCall(string requestParam, ILambdaContext context)
+    public async Task<List<ItemObject>> HarvardCall(string requestParam, ILambdaContext context, string apiKey)
     {
         //  Setting Up Vars
         var log = context.Logger;
@@ -110,7 +114,7 @@ public class API_Aggregator_Main
                 {
                     //  Query Creation
                     var query = HttpUtility.ParseQueryString(requestParam);
-                    query["apikey"] = ApiKey;
+                    query["apikey"] = apiKey;
 
                     //  URI Creation
                     var uriBuilder = new UriBuilder(nextUrl ?? HarvardBaseUrl);
